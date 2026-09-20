@@ -9,31 +9,280 @@ datasource db {
 
 model Order {
   id            Int      @id @default(autoincrement())
+
+  orderNumber   String   @unique
+customerId    Int?
+customer      Customer? @relation("CustomerOrders", fields: [customerId], references: [id])
+
   customerName  String
   companyName   String?
   email         String?
   phone         String?
-  productName   String
-  quantity      Int
-  requirements  String?
+  dimensions     String?
+  packingPurpose String?
+
   deliveryDate  DateTime?
+
+  grandTotal    Float    @default(0)
+
   status        String   @default("Pending")
+
+  requirements  String?
+
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items         OrderItem[]
+  production    Production?
+  invoice Invoice?
 }
+model Production {
+  id            Int      @id @default(autoincrement())
+
+  orderId       Int      @unique
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  stage         String   @default("Pending")
+  status        String   @default("In Production")
+
+  startDate     DateTime?
+  expectedDate  DateTime?
+
+  remarks       String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model OrderItem {
+  id           Int @id @default(autoincrement())
+
+  orderId      Int
+  productId    Int
+
+  quantity     Int
+  unitPrice    Float
+  totalAmount  Float
+
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product @relation(fields: [productId], references: [id])
+}
+
+model Quotation {
+  id Int @id @default(autoincrement())
+
+  quotationNumber String @unique
+
+  customerName String
+  companyName String?
+  email String?
+  phone String?
+
+  dimensions String?
+  packingPurpose String?
+  requirements String?
+
+  deliveryDate DateTime?
+
+  grandTotal Float @default(0)
+
+  status String @default("Pending")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items QuotationItem[]
+}
+
+model QuotationItem {
+  id            Int @id @default(autoincrement())
+
+  quotationId   Int
+  productId     Int
+
+  quantity      Int
+  unitPrice     Float
+  totalAmount   Float
+
+  quotation     Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product       Product @relation(fields: [productId], references: [id])
+}
+
 model Product {
   id          Int      @id @default(autoincrement())
+
   name        String
   category    String
+
+  hsnCode     String? @default("39232990")
+
+  gsm         String?
+  size        String?
+  color       String?
+  printing    String?
+  lamination  Boolean @default(false)
+
   description String
   image       String
+
   status      String   @default("Active")
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  orderItems      OrderItem[]
+  quotationItems  QuotationItem[]
+  invoiceItems    InvoiceItem[]
+
+  inventory       Inventory?
+}
+
+model Inventory {
+  id            Int      @id @default(autoincrement())
+
+  productId      Int      @unique
+  product         Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantity       Int      @default(0)
+  minimumStock   Int      @default(50)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  transactions   InventoryTransaction[]
+}
+
+model InventoryTransaction {
+  id           Int      @id @default(autoincrement())
+
+  inventoryId  Int
+  inventory    Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  type         String
+  quantity     Int
+
+  remarks      String?
+
+  createdAt    DateTime @default(now())
+}
+
+model Customer {
+  id            Int      @id @default(autoincrement())
+
+  customerName  String
+  companyName   String?
+  email         String?  @unique
+  phone         String?  @unique
+
+  address       String?
+  gstNumber     String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  orders Order[] @relation("CustomerOrders")
+  invoices Invoice[] @relation("CustomerInvoices")
 }
 
 model Admin {
   id        Int      @id @default(autoincrement())
+
   email     String   @unique
   password  String
+
   createdAt DateTime @default(now())
+}
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+
+  title      String
+  message    String
+
+  type       String
+
+  priority   String   @default("Normal")
+
+  isRead     Boolean  @default(false)
+
+  actionUrl  String?
+
+  createdAt  DateTime @default(now())
+}
+model Invoice {
+  id             Int      @id @default(autoincrement())
+
+  invoiceNumber  String   @unique
+
+  orderId Int @unique
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  customerId     Int?
+  customer        Customer? @relation("CustomerInvoices", fields: [customerId], references: [id], onDelete: SetNull)
+
+  invoiceDate    DateTime @default(now())
+
+  subtotal       Float
+  cgst           Float
+  sgst           Float
+  igst           Float
+  grandTotal     Float
+
+  paymentStatus  String   @default("Unpaid")
+
+  vehicleNumber  String?
+  dispatchMode   String?
+  remarks        String?
+
+  items          InvoiceItem[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+model InvoiceItem {
+  id         Int      @id @default(autoincrement())
+
+  invoiceId  Int
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  productId  Int
+  product    Product  @relation(fields: [productId], references: [id])
+
+  quantity   Int
+  unitPrice  Float
+  amount     Float
+}
+model CompanySettings {
+  id             Int      @id @default(1)
+
+  companyName    String
+  gstNumber      String?
+
+  address        String?
+
+  phone          String?
+  email          String?
+  website        String?
+
+  invoicePrefix  String   @default("NSP")
+
+  logo           String?
+
+  // =========================
+  // Invoice Details
+  // =========================
+
+  bankName       String?
+  accountNumber  String?
+  ifscCode       String?
+  branch         String?
+
+  panNumber      String?
+  state          String?
+
+  declaration    String? @default("We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.")
+
+  authorizedSign String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

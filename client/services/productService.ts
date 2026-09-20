@@ -1,23 +1,40 @@
-const API_URL = "http://localhost:5000/api/products";
+import { getAuthHeaders } from "@/utils/api";
+import API_BASE_URL from "@/lib/api";
+
+const API_URL = `${API_BASE_URL}/products`;
 
 export const getProducts = async () => {
-  const res = await fetch(API_URL);
+  const res = await fetch(API_URL, {
+    headers: getAuthHeaders(),
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("adminToken");
+    window.location.href = "/admin";
+    return [];
+  }
 
   if (!res.ok) {
     throw new Error("Failed to fetch products");
   }
 
-  return res.json();
+  const data = await res.json();
+
+  return Array.isArray(data) ? data : [];
 };
 
 export const createProduct = async (product: any) => {
   const res = await fetch(API_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(product),
   });
+
+  if (res.status === 401) {
+    localStorage.removeItem("adminToken");
+    window.location.href = "/admin";
+    return;
+  }
 
   if (!res.ok) {
     throw new Error("Failed to create product");
@@ -32,11 +49,15 @@ export const updateProduct = async (
 ) => {
   const res = await fetch(`${API_URL}/${id}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(product),
   });
+
+  if (res.status === 401) {
+    localStorage.removeItem("adminToken");
+    window.location.href = "/admin";
+    return;
+  }
 
   if (!res.ok) {
     throw new Error("Failed to update product");
@@ -48,7 +69,14 @@ export const updateProduct = async (
 export const deleteProduct = async (id: number) => {
   const res = await fetch(`${API_URL}/${id}`, {
     method: "DELETE",
+    headers: getAuthHeaders(),
   });
+
+  if (res.status === 401) {
+    localStorage.removeItem("adminToken");
+    window.location.href = "/admin";
+    return;
+  }
 
   if (!res.ok) {
     throw new Error("Failed to delete product");

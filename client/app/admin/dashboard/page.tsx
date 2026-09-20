@@ -3,204 +3,185 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import MonthlyOrdersChart from "@/components/MonthlyOrdersChart";
+import OrderStatusPieChart from "@/components/OrderStatusPieChart";
+import RecentOrders from "@/components/RecentOrders";
+import QuickActions from "@/components/QuickActions";
+import NotificationBell from "@/components/NotificationBell";
+
+import {
+  dashboardService,
+  DashboardStats,
+} from "@/services/dashboardService";
 
 export default function AdminDashboard() {
   const router = useRouter();
 
-  const [orders, setOrders] = useState<any[]>([]);
+  const [dashboard, setDashboard] =
+    useState<DashboardStats>({
+      totalProducts: 0,
+      totalCustomers: 0,
+      totalInvoices: 0,
+      totalRevenue: 0,
+
+      totalOrders: 0,
+      pendingOrders: 0,
+      inProgressOrders: 0,
+      completedOrders: 0,
+
+      monthlyOrders: [],
+      recentOrders: [],
+    });
+
   const [loading, setLoading] = useState(true);
- 
 
-  // Protect Dashboard
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-
-    if (!token) {
-      router.push("/admin/login");
+    if (!localStorage.getItem("adminToken")) {
+      router.replace("/admin");
       return;
     }
 
-    fetchOrders();
+    fetchDashboard();
   }, []);
 
-  // Fetch Orders
-  const fetchOrders = async () => {
+  async function fetchDashboard() {
     try {
-      const res = await fetch("http://localhost:5000/api/orders");
-      const data = await res.json();
-      setOrders(data);
+      const data =
+        await dashboardService.getDashboardStats();
+
+      setDashboard(data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  // Logout
-  const handleLogout = () => {
-    localStorage.removeItem("adminToken");
-    router.push("/admin/login");
-  };
-
-  // Update Status
-  const updateStatus = async (id: number, status: string) => {
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/orders/${id}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status }),
-        }
-      );
-
-      if (!response.ok) {
-        alert("Failed to update status");
-        return;
-      }
-
-      fetchOrders();
-    } catch (error) {
-      console.error(error);
-      alert("Server Error");
-    }
-  };
-
-  // Delete Order
-  const deleteOrder = async (id: number) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this order?"
+  if (loading) {
+    return (
+      <div className="p-8 text-xl font-semibold">
+        Loading Dashboard...
+      </div>
     );
-
-    if (!confirmDelete) return;
-
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/orders/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!response.ok) {
-        alert("Failed to delete order");
-        return;
-      }
-
-      fetchOrders();
-    } catch (error) {
-      console.error(error);
-      alert("Server Error");
-    }
-  };
+  }
 
   return (
-    <>
-      {/* Header */}
-    <div className="flex justify-between items-center mb-8">
-  <div>
-    <h1 className="text-3xl font-bold text-gray-800">
-      Dashboard
-    </h1>
+    <div className="p-8 bg-gray-100 min-h-screen">
 
-    <p className="text-gray-500 mt-1">
-      Welcome to Naga Sai Polymers Admin Panel
-    </p>
-  </div>
+      <div className="flex justify-between items-center mb-10">
 
-  <button
-    onClick={handleLogout}
-    className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition"
-  >
-    Logout
-  </button>
-</div>
+        <div>
+          <h1 className="text-4xl font-bold text-gray-800">
+            Dashboard
+          </h1>
 
-      <div className="p-8">
+          <p className="text-gray-500 mt-2">
+            Welcome back to Naga Sai Polymers ERP
+          </p>
+        </div>
 
-  
+        <div className="flex items-center gap-6">
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-
-          <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-gray-500">Total Orders</h2>
-            <p className="text-4xl font-bold mt-2">
-              {orders.length}
+          <div className="text-right">
+            <p className="text-gray-500">
+              Today
             </p>
+
+            <h2 className="text-lg font-bold">
+              {new Date().toLocaleDateString("en-IN")}
+            </h2>
           </div>
 
-          <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-gray-500">Pending Orders</h2>
-            <p className="text-4xl font-bold text-yellow-600 mt-2">
-              {orders.filter(o => o.status === "Pending").length}
-            </p>
-          </div>
-          <div className="bg-white rounded-xl shadow p-6">
-  <h2 className="text-gray-500">In Progress</h2>
-  <p className="text-4xl font-bold text-blue-600 mt-2">
-    {orders.filter(o => o.status === "In Progress").length}
-  </p>
-</div>
-
-          <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-gray-500">Completed Orders</h2>
-            <p className="text-4xl font-bold text-green-600 mt-2">
-              {orders.filter(o => o.status === "Completed").length}
-            </p>
-          </div>
+          <NotificationBell />
 
         </div>
-        
-
-       {/* Quick Actions */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-
-  <a
-    href="/admin/orders"
-    className="bg-white rounded-xl shadow p-6 hover:shadow-lg transition"
-  >
-    <h3 className="text-lg font-semibold">📦 Orders</h3>
-    <p className="text-gray-500 mt-2">
-      View and manage customer enquiries.
-    </p>
-  </a>
-
-  <a
-    href="/admin/products"
-    className="bg-white rounded-xl shadow p-6 hover:shadow-lg transition"
-  >
-    <h3 className="text-lg font-semibold">🏭 Products</h3>
-    <p className="text-gray-500 mt-2">
-      Manage your products.
-    </p>
-  </a>
-
-  <a
-    href="/admin/customers"
-    className="bg-white rounded-xl shadow p-6 hover:shadow-lg transition"
-  >
-    <h3 className="text-lg font-semibold">👥 Customers</h3>
-    <p className="text-gray-500 mt-2">
-      View customer details.
-    </p>
-  </a>
-
-  <a
-    href="/admin/reports"
-    className="bg-white rounded-xl shadow p-6 hover:shadow-lg transition"
-  >
-    <h3 className="text-lg font-semibold">📊 Reports</h3>
-    <p className="text-gray-500 mt-2">
-      Business insights and analytics.
-    </p>
-  </a>
-
-</div>
 
       </div>
-       </>
-);
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+
+        <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-indigo-600">
+          <p className="text-gray-500 font-medium">Products</p>
+          <h2 className="text-4xl font-bold mt-3 text-indigo-600">
+            {dashboard.totalProducts}
+          </h2>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-600">
+          <p className="text-gray-500 font-medium">Customers</p>
+          <h2 className="text-4xl font-bold mt-3 text-purple-600">
+            {dashboard.totalCustomers}
+          </h2>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-600">
+          <p className="text-gray-500 font-medium">Orders</p>
+          <h2 className="text-4xl font-bold mt-3 text-blue-600">
+            {dashboard.totalOrders}
+          </h2>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-600">
+          <p className="text-gray-500 font-medium">Revenue</p>
+          <h2 className="text-3xl font-bold mt-3 text-green-600">
+            ₹{dashboard.totalRevenue.toLocaleString("en-IN")}
+          </h2>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
+          <p className="text-gray-500 font-medium">Invoices</p>
+          <h2 className="text-4xl font-bold mt-3 text-orange-500">
+            {dashboard.totalInvoices}
+          </h2>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500">
+          <p className="text-gray-500 font-medium">Pending</p>
+          <h2 className="text-4xl font-bold mt-3 text-yellow-500">
+            {dashboard.pendingOrders}
+          </h2>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-cyan-600">
+          <p className="text-gray-500 font-medium">In Progress</p>
+          <h2 className="text-4xl font-bold mt-3 text-cyan-600">
+            {dashboard.inProgressOrders}
+          </h2>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-emerald-600">
+          <p className="text-gray-500 font-medium">Completed</p>
+          <h2 className="text-4xl font-bold mt-3 text-emerald-600">
+            {dashboard.completedOrders}
+          </h2>
+        </div>
+
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-10">
+
+        <MonthlyOrdersChart
+          data={dashboard.monthlyOrders}
+        />
+
+        <OrderStatusPieChart
+          pending={dashboard.pendingOrders}
+          inProgress={dashboard.inProgressOrders}
+          completed={dashboard.completedOrders}
+        />
+
+      </div>
+
+      <div className="mb-10">
+        <RecentOrders
+          orders={dashboard.recentOrders}
+        />
+      </div>
+
+      <div className="mb-10">
+        <QuickActions />
+      </div>
+
+    </div>
+  );
 }
