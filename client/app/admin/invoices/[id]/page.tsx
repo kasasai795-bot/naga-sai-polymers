@@ -8,6 +8,8 @@ import API_BASE_URL from "@/lib/api";
 import html2PDF from "jspdf-html2canvas";
 import { numberToWords } from "@/utils/numberToWords";
 
+export const dynamic = "force-dynamic";
+
 export default function InvoicePage() {
     const downloadPDF = async () => {
   const element = document.getElementById("invoice");
